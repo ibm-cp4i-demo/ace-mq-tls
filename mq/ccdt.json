@@ -1,0 +1,21 @@
+{
+  "channel": [
+    {
+      "name": "DEV.APP.SVRCONN",
+      "clientConnection": {
+        "connection": [
+          {
+            "host": "mq-ibm-mq",
+            "port": 1414
+          }
+        ],
+        "queueManager": "QM"
+      },
+      "transmissionSecurity": {
+        "cipherSpecification": "ECDHE_RSA_AES_256_CBC_SHA384",
+        "certificateLabel": "aceclient"
+      },
+      "type": "clientConnection"
+    }
+  ]
+}

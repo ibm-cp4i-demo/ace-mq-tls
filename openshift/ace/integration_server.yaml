@@ -1,0 +1,83 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: IntegrationServer
+labels:
+  app.kubernetes.io/instance: ${PREFIX}-ace-mq-tls-mq
+  project: ${PREFIX}-ace-mq-tls
+objects:
+  - kind: Configuration
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace-server.kdb
+    spec:
+      type: keystore
+      contents: ${ACE_MQ_TLS_MA_ACE_SERVER_KDB}
+  - kind: Configuration
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace-server.sth
+    spec:
+      type: keystore
+      contents: ${ACE_MQ_TLS_MA_ACE_SERVER_STH}
+  - kind: Configuration
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace-mq-tls-ma-policyproject
+    spec:
+      type: policyproject
+      contents: ${ACE_MQ_TLS_MA_POLICY_PROJECT}
+  - kind: Configuration
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace-mq-tls-serverconf
+    spec:
+      type: serverconf
+      contents: ${ACE_MQ_TLS_MA_SERVERCONF}
+  - kind: Configuration
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace-mq-tls-setdbparms
+    spec:
+      type: setdbparms
+      contents: ${ACE_MQ_TLS_MA_SETDBPARMS}
+  - kind: IntegrationServer
+    apiVersion: appconnect.ibm.com/v1beta1
+    metadata:
+      name: ace
+    spec:
+      adminServerSecure: true
+      designerFlowsOperationMode: disabled
+      license:
+        accept: true
+        license: ${ACE_LICENSE}
+        use: ${ACE_USE}
+      pod:
+        containers:
+          runtime:
+            image: image-registry.openshift-image-registry.svc:5000/ace/readwritemq
+            resources:
+              limits:
+                cpu: 1
+                memory: 1Gi
+              requests:
+                cpu: 300m
+                memory: 300Mi
+      replicas: 1
+      version: ${ACE_VERSION}
+      configurations:
+        - ace-server.kdb
+        - ace-server.sth
+        - ace-mq-tls-ma-policyproject
+        - ace-mq-tls-serverconf
+        - ace-mq-tls-setdbparms
+parameters:
+  - name: PREFIX
+  - name: ACE_MQ_TLS_MA_POLICY_PROJECT
+  - name: ACE_MQ_TLS_MA_ACE_SERVER_KDB
+  - name: ACE_MQ_TLS_MA_ACE_SERVER_STH
+  - name: ACE_MQ_TLS_MA_SERVERCONF
+  - name: ACE_MQ_TLS_MA_SETDBPARMS
+  - name: ACE_VERSION
+  - name: ACE_LICENSE
+  - name: ACE_USE

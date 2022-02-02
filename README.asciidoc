@@ -1,0 +1,46 @@
+= A example of ACE to MQ integration over TLS-MA
+:toc:
+:toc-placement: preamble
+:toclevels: 1
+:showtitle:
+:Some attr: Some value
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+[NOTE]
+====
+Work in Progress
+====
+
+In this tutorial we will demonstrate an example of an integration server in ACE that integrates with an instance of MQ server over Transport Layer Security (TLS) and Mutal Authentication (MA). 
+
+Integration server in ACE will authenticate itself with the MQ server via client certficate and will trust MQ via MQ's public certficate. The certificates of both MQ server and the integration server will be issued by Certificate Authority (CA). Moreover, both the MQ server and the intergration server will trust CA certificate. This way mutual trust will be establised.
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/ca.svg">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/ca.svg[align="center"]
+endif::[]
+
+In this tutorial we will create all the required certficates and private keys, as well as a self signed CA key and certificate. We will also create the necessary key and certificate repository (keystore/truststore) as needed by the MQ server and the integration server.
+
+We start by creating the required keys and certificates. Afterwards, if you either deploy the solution locally with containers or on OpenShift.
+
+. To create the keys, certficates and stores follow link:cert-generation/README.md[cert-generation]
+
+. For deployment
++
+Follow link:local/README.asciidoc[local deployment] for local container based deployment
++
+Follow link:openshift/README.md[OpenShift deployment] for OpenShift based deployment

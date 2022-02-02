@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: mq
+labels:
+  app.kubernetes.io/instance: ${PREFIX}-ace-mq-tls-example-mq
+  project: ace-mq-tls-example
+objects:
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: ${PREFIX}-config-mqsc
+    binaryData:
+      config.mqsc: ${CONFIG_MQSC}
+  - kind: Secret
+    apiVersion: v1
+    metadata:
+      name: ${PREFIX}-mq-key-cert
+    data:
+      mq-server.crt: ${MQ_SERVER_CERT}
+      mq-server.key: ${MQ_SERVER_KEY}
+  - kind: Secret
+    apiVersion: v1
+    metadata:
+      name: ${PREFIX}-ca-cert
+    data:
+      ca.crt: ${CA_CERT}
+  - kind: QueueManager
+    apiVersion: mq.ibm.com/v1beta1
+    metadata:
+      name: mq
+    spec:
+      license:
+        accept: true
+        license: L-RJON-BN7PN3
+        metric: ProcessorValueUnit
+        use: NonProduction
+      queueManager:
+        name: ${QUEUE_MANAGER_NAME}
+        mqsc:
+          - configMap:
+              name: ${PREFIX}-config-mqsc
+              items:
+              - config.mqsc
+        storage:
+          queueManager:
+            type: ephemeral
+      version: ${MQ_VERSION}
+      web:
+        enabled: true
+      pki:
+        keys:
+          - name: default
+            secret:
+              items:
+                - mq-server.key
+                - mq-server.crt
+              secretName: ${PREFIX}-mq-key-cert
+        trust:
+          - name: ca
+            secret:
+              items:
+                - ca.crt
+              secretName: ${PREFIX}-ca-cert
+parameters:
+  - name: PREFIX
+  - name: CONFIG_MQSC
+  - name: MQ_VERSION
+  - name: QUEUE_MANAGER_NAME
+  - name: MQ_SERVER_CERT
+  - name: MQ_SERVER_KEY
+  - name: CA_CERT

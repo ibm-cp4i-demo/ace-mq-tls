@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="MQEndpoint" policyName="QM" policyTemplate="MQEndpoint">
+    <connection>CLIENT</connection>
+    <destinationQueueManagerName>QM</destinationQueueManagerName>
+    <queueManagerHostname>mq-ibm-mq.mq</queueManagerHostname>
+    <listenerPortNumber>1414</listenerPortNumber>
+    <channelName>DEV.APP.SVRCONN</channelName>
+    <securityIdentity>aceapp</securityIdentity>
+    <useSSL>true</useSSL>
+    <SSLPeerName></SSLPeerName>
+    <SSLCipherSpec>ECDHE_RSA_AES_256_CBC_SHA384</SSLCipherSpec>
+  </policy>
+</policies>

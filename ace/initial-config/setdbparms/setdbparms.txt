@@ -1,0 +1,1 @@
+mqsisetdbparms -w /home/aceuser/ace-server -n mq::aceapp -u aceapp -p aceapp

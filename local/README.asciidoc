@@ -1,0 +1,105 @@
+= Deploying locally with local container runtime
+:toc:
+
+The scripts makes use of Docker CLI client. If you use a different container CLI (but something that is compatible with `docker` commands) you may change `CONTAINER_CLI` environment variable in link:../env.sh[env.sh]. footnote:[we have not tested our solution against different container runtimes]
+
+== Deploy an LDAP instance
+
+Change to `ldap` directory:
+
+[source,bash,attributes]
+----
+ace-mq-tls (root of this repository)
+...
+├── local
+│   ├── ace
+│   ├── ldap <-- change to this directory
+│   └── mq
+----
+
+and examine the link:ldap/run.sh[`run.sh`] script. 
+
+The script creates a container network named `ace-mq-tls`, removes a container named `ldap` (in case one exists), and runs a LDAP instance based on `bitnami/openldap:2.4.59` container. It makes use of LDIF file link:../ldap/bootstrap.ldif[bootstrap.ldif], to create the initial LDAP directory content which contains the user `aceapp`, which we make use of in this tutorial. 
+
+Execute the `run.sh` shell script.
+
+[source,bash,]
+----
+./run.sh
+----
+
+This should create container network `ace-mq-tls` and run the container with name `ldap`. You can verify the instances with
+
+[source,bash,]
+----
+docker network ls
+----
+
+and
+
+[source,bash,]
+----
+docker ps
+----
+
+
+=== Test it out
+
+You can use `ldapsearch` from your local machine to query for all the records as `admin` user:
+
+[source,bash,]
+----
+ldapsearch -x -h localhost:1389 -b "dc=ibm,dc=com" -D "cn=admin,dc=ibm,dc=com" -w admin
+----
+
+following should be the expected output:
+
+[source,bash,]
+----
+# extended LDIF
+#
+# LDAPv3
+# base <dc=ibm,dc=com> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# ibm.com
+dn: dc=ibm,dc=com
+objectClass: dcObject
+objectClass: organization
+dc: ibm
+o: ibm
+
+# people, ibm.com
+dn: ou=people,dc=ibm,dc=com
+objectClass: organizationalUnit
+description: All people in organization
+ou: people
+
+# groups, ibm.com
+dn: ou=groups,dc=ibm,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+
+# aceapp, people, ibm.com
+dn: uid=aceapp,ou=people,dc=ibm,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: aceappCN
+sn: aceappSN
+uid: aceapp
+userPassword:: YWNlYXBw
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 5
+# numEntries: 4
+----
+
+which should match the LDIF file link:../ldap/bootstrap.ldif[bootstrap.ldif]

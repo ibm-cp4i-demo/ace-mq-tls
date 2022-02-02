@@ -1,0 +1,27 @@
+dn: dc=ibm,dc=com
+objectClass: dcObject
+objectClass: organization
+dc: ibm
+o: ibm
+
+dn: ou=people,dc=ibm,dc=com
+objectClass: organizationalUnit
+description: All people in organization
+ou: people
+
+dn: ou=groups,dc=ibm,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+
+# For ACE messaging applications
+dn: uid=aceapp,ou=people,dc=ibm,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: aceappCN
+sn: aceappSN
+uid: aceapp
+userPassword: aceapp
+

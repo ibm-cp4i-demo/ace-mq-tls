@@ -6,9 +6,9 @@ source ${DEPLOYMENT_ROOT}/env.sh
 
 mkdir -p ${DEPLOYMENT_ROOT}/certs
 
-docker build -t cert-generator docker
+${CONTAINER_CLI} build -t cert-generator docker
 
-docker run \
+${CONTAINER_CLI} run \
   -v ${DEPLOYMENT_ROOT}/certs:/certs \
   -w /certs \
   -e PREFIX=${PREFIX} \
@@ -21,7 +21,7 @@ docker run \
   cert-generator \
   make -f /src/Makefile
 
-docker run \
+${CONTAINER_CLI} run \
   -v ${DEPLOYMENT_ROOT}/certs:/certs \
   -w /certs \
   cert-generator \

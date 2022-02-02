@@ -10,16 +10,18 @@ Change to `ldap` directory:
 [source,bash,attributes]
 ----
 ace-mq-tls (root of this repository)
+|
 ...
 ├── local
 │   ├── ace
 │   ├── ldap <-- change to this directory
 │   └── mq
+...
 ----
 
 and examine the link:ldap/run.sh[`run.sh`] script. 
 
-The script creates a container network named `ace-mq-tls`, removes a container named `ldap` (in case one exists), and runs a LDAP instance based on `bitnami/openldap:2.4.59` container. It makes use of LDIF file link:../ldap/bootstrap.ldif[bootstrap.ldif], to create the initial LDAP directory content which contains the user `aceapp`, which we make use of in this tutorial. 
+The script creates a container network named `ace-mq-tls` (if it does not exists), removes a container named `ldap.ldap` (in case one exists), and runs a LDAP instance based on `bitnami/openldap:2.4.59` container. It makes use of LDIF file link:../ldap/bootstrap.ldif[bootstrap.ldif], to create the initial LDAP directory content which contains the user `aceapp`, which we make use of in this tutorial. 
 
 Execute the `run.sh` shell script.
 
@@ -28,12 +30,17 @@ Execute the `run.sh` shell script.
 ./run.sh
 ----
 
-This should create container network `ace-mq-tls` and run the container with name `ldap`. You can verify the instances with
+This should create container network `ace-mq-tls` and run the container with name `ldap.ldap`. You can verify the instances with:
 
 [source,bash,]
 ----
 docker network ls
 ----
+
+[NOTE]
+====
+In above (and throughout this tutorial) we assume container CLI is `docker`
+====
 
 and
 
@@ -103,3 +110,217 @@ result: 0 Success
 ----
 
 which should match the LDIF file link:../ldap/bootstrap.ldif[bootstrap.ldif]
+
+== Deploy an MQ Server
+
+Change to `mq` directory:
+
+[source,bash,attributes]
+----
+ace-mq-tls (root of this repository)
+|
+...
+├── local
+│   ├── ace
+│   ├── ldap 
+│   └── mq <-- change to this directory
+...
+----
+
+and examine the link:mq/run.sh[`run.sh`] script. 
+
+The script creates a container network named `ace-mq-tls` (if it does not exists), removes a container named `mq-ibm-mq.mq` (in case one exists), and runs a MQ server based on `ibmcom/mq:9.2.4.0-r1-amd64` container. It maps MQ server's key and certificate for it's own identity and the CA certificate in its trust store (directory).
+
+It also configures the MQ server with an MQSC file, link:../mq/config.mqsc[config.mqsc]. 
+
+Execute the `run.sh` shell script.
+
+[source,bash,]
+----
+./run.sh
+----
+
+This should run the container with name `mq-ibm-mq.mq`. You can verify the instance with
+
+[source,bash,]
+----
+docker ps
+----
+
+Verify that the conainer is has no issue by examining the log:
+
+[source,bash,]
+----
+docker logs mq-ibm-mq.mq
+----
+
+You should see no errors. Look for a statement:
+
+[source]
+----
+Automatic MQSC configuration script has completed, and contained 45 command(s), of which 0 had errors.
+----
+
+You can also check out the web console and verify that the requested queues have been created by visiting link:https://localhost:9443/ibmmq/console/#/manage/qmgr/QM/queues[] on a web browser footnote:[username/password for the web console by default is `admin/passw0rd`]:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_web_console.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_web_console.png[align="center"]
+endif::[]
+
+=== Test it out
+
+Change to the link:mq/test[test] directory 
+
+[source,bash,]
+----
+ace-mq-tls
+├── local
+...
+│   ├── mq
+│   │   └── test <-- change to this directory
+│   │       └── test.sh
+...
+----
+
+and examine the link:mq/test/test.sh[test.sh] script.
+
+The script runs a bash shell on the `ibmcom/mq:9.2.4.0-r1-amd64` container by setting the entry point to empty. It maps the KDB and STH files footnote:[nthe keystore and password files where created in the cert-generation step] to `/keystore` directory and a CCDT file to `/ccdt` directory. The link:../mq/ccdt.json[ccdt.json], contains the connection, certificate label and cipher specs needed for MQ C clients to connect.
+
+The script also sets up all the necessary environment variables for the MQ C clients to work with out MQ server. It sets up sample user, `aceapp` for the connection.
+
+Run the script:
+
+[source,bash,]
+----
+./test.sh
+----
+
+This will start a `bash` shell and drop you on `/opt/mqm/samp/bin` working directory. You can use MQ C client, `amqsputc` to a put a message on a queue. . Use passw0rd `aceapp`:
+
+
+[source,bash,]
+----
+bash-4.4$ ./amqsputc DEV.APP.Q.IN QM
+Sample AMQSPUT0 start
+Enter password: ******
+target queue is DEV.APP.Q.IN
+Hello, World
+
+Sample AMQSPUT0 end
+bash-4.4$
+----
+
+You can verify that the message has been put on the queue from the web console:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_web_console.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_web_console.png[align="center"]
+endif::[]
+
+Clicking on the name of the queue will show you the message:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_message.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_message.png[align="center"]
+endif::[]
+
+Exit from the test shell to terminate the container.
+
+== Deploying ACE integration server
+
+Change to `ace` directory:
+
+[source,bash,attributes]
+----
+ace-mq-tls (root of this repository)
+|
+...
+├── local
+│   ├── ace <-- change to this directory
+│   ├── ldap 
+│   └── mq 
+...
+----
+
+and examine the link:ace/run.sh[`run.sh`] script. 
+
+The script creates a container network named `ace-mq-tls` (if it does not exists), removes a container named `ace` (in case one exists), and runs an integration server. The script maps link:../ace/initial-config[initial-config] to `/home/aceuser/initial-config` which loads the BAR file, set up MQ policy project, configures the server with `server.conf.yaml` and sets up dbparms.
+
+Run the script
+
+[source,bash,]
+----
+./run.sh
+----
+
+Check the log of the container:
+
+[source,bash,]
+----
+docker logs ace
+----
+
+Verify that there is no error, and message like the following is shown
+
+[source,bash,]
+----
+... BIP9906I: Reading deployed resources.
+... BIP9907I: Initializing deployed resources.
+... BIP2155I: About to 'Initialize' the deployed resource 'ace-mq' of type 'Application'.
+... BIP2155I: About to 'Start' the deployed resource 'ace-mq' of type 'Application'.
+... BIP2269I: Deployed resource 'readwritemq' (uuid='readwritemq',type='MessageFlow') started successfully.
+... BIP2866I: IBM App Connect Enterprise administration security is inactive.
+... BIP3132I: The HTTP Listener has started listening on port '7600' for 'RestAdmin http' connections.
+... BIP1991I: Integration server has finished initialization.
+... Integration server is ready
+----
+
+To verify that the message flow is working, 
+check queue on MQ's web console link:https://localhost:9443/ibmmq/console/#/manage/qmgr/QM/queues[]. There should not be any message on the queue `DEV.APP.Q.IN` (the one we put earlier), the message should be put on `DEV.APP.Q.OUT`. 
+
+Try put another message in `DEV.APP.Q.IN`. You can use MQ's web console:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_message_put_web_console.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_message_put_web_console.png[align="center"]
+endif::[]
+
+If the ACE message flow is working, the message will be immediately removed from the `DEV.APP.Q.IN` queue and put on to the `DEV.APP.Q.OUT` queue:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_message_out.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_message_out.png[align="center"]
+endif::[]
+
+This concludes the deployment of our ACE to MQ solution over TLS MA on local container runtime.

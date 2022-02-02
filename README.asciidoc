@@ -35,6 +35,84 @@ endif::[]
 
 In this tutorial we will create all the required certficates and private keys, as well as a self signed CA key and certificate. We will also create the necessary key and certificate repository (keystore/truststore) as needed by the MQ server and the integration server.
 
+== The example application
+
+We will have a message flow built with App Connect Enterprise (ACE) toolkit. The message flow integrates with a single queue manager. The flow reads from a queue and write to another queue hosted on the queue manager.
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/message_flow.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/message_flow.png[align="center"]
+endif::[]
+
+The message flow only contains two MQ nodes, an MQ Input node and an MQ Output Node. The input node reads from queue, `DEV.APP.Q.IN` and write the MQ Output node writes to the queue, `DEV.APP.Q.OUT`:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/in_queue.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/in_queue.png[align="center"]
+endif::[]
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/out_queue.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/out_queue.png[align="center"]
+endif::[]
+
+Source code of this ACE application can be found here: link:https://github.com/ibm-cp4i-demo/readwritemq[]. Nevertheless the BAR file is maintained here link:ace/initial-config/bars/readwritemq.bar[readwritemq.bar].
+
+The ACE integration server hosting this ACE application (message flow) will connect to MQ server over TLS and Mutual Authetication. link:ace/initial-config/serverconf/server.conf.yaml[server.conf.yaml] will set up the MQ key repository that the ACE server will use for mutual authentication over TLS.
+
+Connection details to MQ are de-coupled from the application and are configured with deployment with MQ policy project, named, link:ace/initial-config/policy/mq.policyxml[`QM`]. 
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/in_policy.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/in_policy.png[align="center"]
+endif::[]
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/out_policy.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/out_policy.png[align="center"]
+endif::[]
+
+Password for authenticating with the queue are set up via the security identity set up in link:ace/initial-config/setdbparms/setdbparms.txt[setdbparms.txt].
+
+For MQ, user authentication to the queues will be set up with an LDAP instance. link:ldap/bootstrap.ldif[bootstrap.ldif] defines the LDAP users, groups and passwords.
+
+The queue manager will be configured an MQSC file, link:mq/config.mqsc[config.mqsc]. It contains configurations to connect to the LDAP instance. The MQSC file creates and sets up a channel `DEV.APP.SVRCONN` that requires SSL mutual authentication. 
+
+It defines the two queues, `DEV.APP.Q.IN` and `DEV.APP.Q.OUT`, and it sets up authentication records so that only `aceapp` LDAP user can access the queues. This is the LDAP user used by the ACE message flow as its security identity.
+
+
+== Steps
+
 We start by creating the required keys and certificates. Afterwards, if you either deploy the solution locally with containers or on OpenShift.
 
 . To create the keys, certficates and stores follow link:cert-generation/README.md[cert-generation]

@@ -4,17 +4,17 @@ DEPLOYMENT_ROOT=$(pwd)/../..
 
 source ${DEPLOYMENT_ROOT}/env.sh
 source ${DEPLOYMENT_ROOT}/paths.sh
+source ${DEPLOYMENT_ROOT}/common/common.sh
 
-docker network create ace-mq || true
+create_network ace-mq-tls
+remove_container ace
 
-docker rm -f ace
-
-docker run \
+${CONTAINER_CLI} run \
   -d \
-  --network ace-mq \
+  --network ace-mq-tls \
   -v ${DEPLOYMENT_ROOT}/ace/initial-config:/home/aceuser/initial-config \
-  -v ${ACE_SERVER_KEYSTORE_KDB_PATH}:/home/aceuser/ace-server/kdb/ace-server.kdb \
-  -v ${ACE_SERVER_KEYSTORE_STH_PATH}:/home/aceuser/ace-server/kdb/ace-server.sth \
+  -v ${ACE_MQ_TLS_MA_ACE_SERVER_KDB_PATH}:/home/aceuser/keystores/ace-server.kdb \
+  -v ${ACE_MQ_TLS_MA_ACE_SERVER_STH_PATH}:/home/aceuser/keystores/ace-server.sth \
   -e LICENSE=accept \
   -e ACE_SERVER_NAME=ACESERVER \
   -e MQCERTLABL=aceclient \

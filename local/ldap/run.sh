@@ -9,7 +9,7 @@ source ${DEPLOYMENT_ROOT}/paths.sh
 source ${DEPLOYMENT_ROOT}/common/common.sh
 
 create_network ace-mq-tls
-remove_container ldap
+remove_container ldap.ldap
 
 ${CONTAINER_CLI} run \
   -d \
@@ -20,5 +20,5 @@ ${CONTAINER_CLI} run \
   -e LDAP_ROOT='dc=ibm,dc=com' \
   -p 1389:1389 \
   -p 1636:1636 \
-  --name ldap \
+  --name ldap.ldap \
   bitnami/openldap:2.4.59

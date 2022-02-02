@@ -5,7 +5,7 @@
       "clientConnection": {
         "connection": [
           {
-            "host": "mq-ibm-mq",
+            "host": "mq-ibm-mq.mq",
             "port": 1414
           }
         ],

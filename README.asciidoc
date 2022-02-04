@@ -13,10 +13,6 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-[NOTE]
-====
-Work in Progress
-====
 
 In this tutorial we will demonstrate an example of an integration server in ACE that integrates with an instance of MQ server over Transport Layer Security (TLS) and Mutal Authentication (MA). 
 

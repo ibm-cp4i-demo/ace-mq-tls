@@ -323,4 +323,6 @@ ifndef::env-github[]
 image::readme_images/mq_message_out.png[align="center"]
 endif::[]
 
-This concludes the deployment of our ACE to MQ solution over TLS MA on local container runtime.
+This concludes the deployment of our ACE to MQ solution over TLS MA on local container runtime. 
+
+If you wish, you can run the clean up script, link:cleanup.sh[] to remove the containers and the network.

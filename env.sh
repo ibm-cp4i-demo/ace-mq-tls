@@ -2,10 +2,7 @@ CONTAINER_CLI=docker
 
 PREFIX=ibm
 
-MQ_VERSION=9.2.0.0-r2
 QUEUE_MANAGER_NAME=QM
-
-ACE_VERSION=11.0.0.11-r1
 
 # see http://ibm.biz/acelicense
 ACE_LICENSE=L-APEH-BSVCHU

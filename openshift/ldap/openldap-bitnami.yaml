@@ -9,7 +9,7 @@ objects:
   - kind: ConfigMap
     apiVersion: v1
     metadata:
-      name: bootstrap.ldif
+      name: ${PREFIX}-bootstrap-ldif
     binaryData:
       bootstrap.ldif: ${BOOTSTRAP_LDIF}
   - kind: Deployment
@@ -29,7 +29,7 @@ objects:
         spec:
           containers:
             - name: ldap
-              image: docker.io/mashrurmia/bitnami-openldap
+              image: bitnami/openldap:2.4.59
               imagePullPolicy: Always
               ports:
               - name: ldap-port
@@ -48,7 +48,7 @@ objects:
           volumes:
           - name: ldif
             configMap:
-              name: bootstrap.ldif
+              name: ${PREFIX}-bootstrap-ldif
   - kind: Service
     apiVersion: v1
     metadata:
@@ -58,11 +58,11 @@ objects:
     spec:
       selector:
         app: ldap
-      type: NodePort
       ports:
       - name: ldap-port
         protocol: TCP
         port: 1389
         targetPort: ldap-port
 parameters:
+  - name: PREFIX
   - name: BOOTSTRAP_LDIF

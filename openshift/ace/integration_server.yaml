@@ -50,8 +50,8 @@ objects:
       designerFlowsOperationMode: disabled
       license:
         accept: true
-        license: ${ACE_LICENSE}
-        use: ${ACE_USE}
+        license: L-APEH-C79SB3
+        use: AppConnectEnterpriseNonProduction
       pod:
         containers:
           runtime:
@@ -64,7 +64,7 @@ objects:
                 cpu: 300m
                 memory: 300Mi
       replicas: 1
-      version: ${ACE_VERSION}
+      version: 12.0.3.0-r1
       configurations:
         - ace-server.kdb
         - ace-server.sth
@@ -78,6 +78,3 @@ parameters:
   - name: ACE_MQ_TLS_MA_ACE_SERVER_STH
   - name: ACE_MQ_TLS_MA_SERVERCONF
   - name: ACE_MQ_TLS_MA_SETDBPARMS
-  - name: ACE_VERSION
-  - name: ACE_LICENSE
-  - name: ACE_USE

@@ -1,0 +1,664 @@
+= Installing ACE to MQ TLS MA Demon on OpenShift
+:toc:
+:toclevels: 4
+:experimental:
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+
+== Pre-requisite
+
+. Install Docker/Podman in your installation machine.
+
+. Install OpenShift an Cluster. We have tested our solution in OpenShift 4.8. 
+
+.  Login to OCP via the `oc` command
++
+This can be done via the access token:
++
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/oc-login.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/oc-login.png[align="center"]
+endif::[]
+
+
+. Install storage classes that supports ReadWriteOnce(RWO) and ReadWriteMany(RWX)
+
+. Add IBM catalog sources to your OpenShift cluster
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-adding-catalog-sources-your-openshift-cluster-online-installation[Adding catalog sources to your OpenShift cluster (online installation)] for details.
+
+. Install Platform Navigator operator cluster-wide
++
+The operator can be found in the OpenShift Operator Hub, once the IBM catalog sources are installed.
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-operators-using-openshift-console[Installing the operators using the Openshift console] for details.
++
+[NOTE]
+====
+Alternatively, you can install "IBM Cloud Pak for Integration" operator to install all the operators. 
+====
++
+Validate that the operator was installed before moving on to the next step.
+
+. Obtain your IBM Entitled Registry entitlement key
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-applying-your-entitlement-key-online-installation[IBM Entitled Registry entitlement keys]
++
+We would need the key to be installed as a pull secret in every namespaces where we install a CP4I capability.
+
+. Install the Platform navigator on a namespace.
++
+We recommend using `cp4i` namespace for this. Install the IBM Entitled Registry entitlement key as a pull secrent on to this chosen namespace footnote:[You may skip installing the pull secret if you install it globally].
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-deploying-cloud-pak-integration-using-openshift-console[Deploying Cloud Pak for Integration using the OpenShift console]footnote:[If the link is not getting you to the right page, try going to link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4[] first, then choose menu:Installing[Deploying Cloud Pak for Integration using the OpenShift console] on the menu bar image:readme_images/menu_pn_ins.png[]]
++
+Wait until Platform Navigator has been provisioned.
+
+. Install `oc` and `kubectl` command line tool.
++
+You can download them from here:
++
+link:https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/oc/4.6/[]
+
+
+. Expose OpenShift internal registry.
++
+This can done via
++
+[source,bash,]
+----
+oc patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}} ' --type=merge
+----
++
+See link:https://docs.openshift.com/container-platform/4.8/registry/securing-exposing-registry.html[Exposing the registry] for more details.
+
+== Install CP4I Capabilities
+
+We will install the components in the following order:
+
+. LDAP
+. MQ
+. ACE Integration Servers
+
+=== Deploying LDAP
+
+Change to `ldap` directory
+
+[source,bash,]
+----
+ace-mq-tls
+...
+├── openshift
+│   ├── ace
+│   ├── ldap  <-- change to this direcotory
+│   │   └── test
+│   ├── mq
+│   │   └── test
+│   └── readme_images
+...
+----
+
+The link:ldap/deploy.sh[deploy.sh] is responsible to deploying an LDAP instance on the OpenShift cluster. Examine the script.
+
+It makes use of a OpenShift template, link:ldap/openldap-bitnami.yaml[openldap-bitnami.yaml]. The template defines 
+
+. A config map to loads the LDIF file, link:../ldap/bootstrap.ldif[bootstrap.ldif]
+. A deployment of an LDAP instance based on OpenLDAP image of `bitnami/openldap:2.4.59`. The deployment mounts the LDIF config map as a volume.
+
+. A service so that the instance can be reached by other services within the cluster
+
+The script assumes that the instance will be installed on a namespace named, `ldap` footnote:[To make deployment simpler, we hard coded the namespaces where services are installed. You are welcomed to change the namespace or even have it parametarised. We choose to hard code to avoid writing more scripts].
+
+Follow the steps:
+
+. Create the namespace `ldap`
++
+[source,bash,attributes]
+----
+oc new-project ldap
+----
+
+. Run the link:ldap/deploy.sh[deploy.sh] script
++
+Simply running
++
+[source,bash,attributes]
+----
+./deploy.sh
+----
++
+will spit out the kubernetes objects that are to tbe created. Examine the output to see what objects are to be created.
++
+Apply the objects with
++
+[source,bash,attributes]
+----
+./deploy.sh apply
+----
++
+which will apply the objects on the namespace, `ldap`.
+
+. Verify that the pod is running
++
+You can check the log of the pod, either from the OpenShift web console, or running the following:
++
+[source,bash]
+----
+oc logs $(oc -n ldap get pods -l app=ldap -o jsonpath='{$.items[*].metadata.name}')
+----
++
+and you should expect something like the following log:
++
+[source,bash]
+----
+ 14:45:17.36 INFO  ==> ** Starting LDAP setup **
+ 14:45:17.39 INFO  ==> Validating settings in LDAP_* env vars
+ 14:45:17.41 INFO  ==> Initializing OpenLDAP...
+ 14:45:17.42 INFO  ==> Creating LDAP online configuration
+ 14:45:17.44 INFO  ==> Starting OpenLDAP server in background
+ 14:45:17.47 INFO  ==> Configure LDAP credentials for admin user
+ 14:45:17.49 INFO  ==> Adding LDAP extra schemas
+ 14:45:17.51 INFO  ==> Loading custom LDIF files...
+ 14:45:17.51 WARN  ==> Ignoring LDAP_USERS, LDAP_PASSWORDS, LDAP_USER_DC and LDAP_GROUP environment variables...
+ 14:45:18.57 INFO  ==> ** LDAP setup finished! **
+
+ 14:45:18.60 INFO  ==> ** Starting slapd **
+61fbea7e @(#) $OpenLDAP: slapd 2.4.59 (Jan 24 2022 20:11:39) $
+        @0c48bcde1a6d:/bitnami/blacksmith-sandox/openldap-2.4.59/servers/slapd
+61fbea7e slapd starting
+----
+
+==== Test it out
+
+The link:ldap/test/test.sh[test.sh] script locates the ldap pod and executes `ldapsearch` command to query the LDAP directory. If the our deployment was success we should see the content of the link:../ldap/bootstrap.ldif[bootstrap.ldif] file.
+
+. Change to `test` directory
++
+[source,bash,]
+----
+ace-mq-tls
+...
+├── openshift
+│   ├── ace
+│   ├── ldap  
+│   │   └── test <-- change to this direcotory
+│   ├── mq
+│   │   └── test
+│   └── readme_images
+...
+----
+
+. Run the link:ldap/test/test.sh[test.sh] script
++
+[source,bash]
+----
+./test.sh
+----
++
+You should expect output like the following:
++
+[source,bash]
+----
+# extended LDIF
+#
+# LDAPv3
+# base <dc=ibm,dc=com> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# ibm.com
+dn: dc=ibm,dc=com
+objectClass: dcObject
+objectClass: organization
+dc: ibm
+o: ibm
+
+# people, ibm.com
+dn: ou=people,dc=ibm,dc=com
+objectClass: organizationalUnit
+description: All people in organization
+ou: people
+
+# groups, ibm.com
+dn: ou=groups,dc=ibm,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+
+# aceapp, people, ibm.com
+dn: uid=aceapp,ou=people,dc=ibm,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: aceappCN
+sn: aceappSN
+uid: aceapp
+userPassword:: YWNlYXBw
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 5
+# numEntries: 4
+----
+
+=== Deploying MQ
+
+Change to `mq` directory
+
+[source,bash,]
+----
+ace-mq-tls
+...
+├── openshift
+│   ├── ace
+│   ├── ldap
+│   │   └── test
+│   ├── mq  <-- change to this direcotory
+│   │   └── test
+│   └── readme_images
+...
+----
+
+The link:mq/deploy.sh[deploy.sh] is responsible to deploying an MQ server on the OpenShift cluster. Examine the script.
+
+It makes use of a OpenShift template, link:mq/queue_manager.yaml[queue_manager.yaml]. The template defines 
+
+. A config map to loads the MQSC file, link:../mq/config.mqsc[config.mqsc]
+
+. A secret object to load our MQ server key and certificate
+
+. A secret object to load our CA server certificate
+
+. A QueueManager object that deploys an MQ server via the IBM MQ Operator. The resource definition refers to the config maps (for config.mqsc) and the secrets (for TLS keys and certificates).
+
+The script assumes that the instance will be installed on a namespace named, `mq`.
+
+. Create `mq` namespace
++
+[source,bash]
+----
+oc new-project mq
+----
+
+. Install IBM MQ Operator on the namespace if not already installed, on the `mq` namespace
++
+Refer to link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-operators-using-openshift-console[Installing the operators using the Openshift console]
++
+[NOTE]
+====
+When looking for the IBM MQ Operator, it\'s under "Streaming & Messaging" category.
+====
++
+Wait until the operator is installed before moving on to the next step
+
+. Install the IBM Entitled Registry entitlement key as a pull secrent on `mq` namespace
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-applying-your-entitlement-key-online-installation[IBM Entitled Registry entitlement keys] for details.
+
+. Run the link:mq/deploy.sh[deploy.sh] script
++
+Simply running
++
+[source,bash,attributes]
+----
+./deploy.sh
+----
++
+will spit out the kubernetes objects that are to tbe created. Examine the output to see what objects are to be created.
++
+Apply the objects with
++
+[source,bash]
+----
+./deploy.sh apply
+----
++
+which will apply the objects on the namespace, `mq`.
++
+
+. Verify that the MQ pod is running
++
+Wait until the MQ pod (`mq-ibm-mq-0`) is running footnote:[You may get a config error were the pod is waiting for the `oidc` secret to be generated. Wait until it is generated].
++
+You can check the log as well, either via OpenShift web console or with the following command
++
+[source,bash]
+----
+oc logs $(oc -n mq get pods -l app.kubernetes.io/instance=mq -o jsonpath='{$.items[*].metadata.name}')
+----
++
+Check that there are no error messages on the log. You can verify that the processing the MQSC file cause no error if you see the following line:
++
+[source,bash]
+----
+... AMQ8939I: Automatic MQSC configuration script has completed, and contained 24 command(s), of which 0 had errors. [ArithInsert1(24), CommentInsert1(0)]
+----
+
+You can also verify that the queues are created from MQ\'s web console:
+
+Get the url of the web console by
+
+[source,bash]
+----
+oc get queuemanager mq -n mq --output jsonpath='{.status.adminUiUrl}'
+----
+
+The username is `admin` and you can get the password from secret, `platform-auth-idp-credentials` from `ibm-common-services` namespace, with:
+
+[source,bash]
+----
+oc extract secret/platform-auth-idp-credentials -n ibm-common-services --to=-
+----
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_web_console.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_web_console.png[align="center"]
+endif::[]
+
+==== Test it out
+
+The link:mq/test/test.sh[test.sh] script runs a MQ pod on the cluster. The pod does not run a MQ server but instead used as a MQ client. We can make use of the MQ C clients from the pod to connect to our MQ server over TLS/MA.
+
+The script makes use of an OpenShift template, link:mq/test/mq_client.yaml[mq_client.yaml]. The template defines 
+
+. A config map to load a CCDT file, link:../mq/ccdt.json[ccdt.json]. The CCDT file contains the connection details to our MQ server
+
+. A secret containing a KDB keystore and stash file. The keystore contains a key and certificate that can be used to a client's identity footnote:[We could have created a new set of key/certficate for the client but instead we are reusing the key/certficate created for ACE server]. The key and the certificate is signed by the same CA that the MQ server trust.
++
+The keystore also contains the CA certficate. This is of the same CA that signed MQ server's cerficate. This way client can trust the MQ server.
+
+. A pod running a container based on `ibmcom/mq:9.2.0.0-r1` image. It overrides the defailt entrypoint of the container and runs `tail -f /dev/null` so that we can run a shell on the container. 
++
+The pod mounts the config map (for `ccdt.json`) and secret (for KDB and STH file) on its filesystem and also sets up the necessary environment variable for the MQ C clients (i.e. `MQCCDTURL`, `MQSAMP_USER_ID`, `MQSSLKEYR`)
+
+The script will install the MQ client on the `mq` namespace footnote:[It does not have to]. To install the client
+
+. Change to `test` directory
++
+[source,bash,]
+----
+ace-mq-tls
+...
+├── openshift
+│   ├── ace
+│   ├── ldap  
+│   │   └── test
+│   ├── mq
+│   │   └── test <-- change to this direcotory
+│   └── readme_images
+...
+----
+
+. Run the link:mq/test/deploy.sh[deploy.sh] script
++
+Simply running
++
+[source,bash,attributes]
+----
+./deploy.sh
+----
++
+will spit out the kubernetes objects that are to tbe created. Examine the output to see what objects are to be created.
++
+Apply the objects with
++
+[source,bash,attributes]
+----
+./deploy.sh apply
+----
++
+which will apply the objects on the namespace, `mq`. And pod named `mq-client` will be created in the namespace.
+
+To send a message to queue, `DEV.APP.Q.IN`, via the MQ client over TLS/MA, you can issue the following command:
+
+[source,bash]
+----
+oc exec -ti mq-client -n mq ./amqsputc DEV.APP.Q.IN QM
+----
+
+This expects the LDAP user, `aceapp` (as set by the environment variable, `MQSAMP_USER_ID`), and the password is `aceapp`:
+
+[source,bash]
+----
+Sample AMQSPUT0 start
+Enter password: ******
+target queue is DEV.APP.Q.IN
+Hello, World!
+
+Sample AMQSPUT0 end
+----
+
+You can verify that the message is put on the queue from the web console of MQ:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_wc_message_count.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_wc_message_count.png[align="center"]
+endif::[]
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_wc_test_message.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_wc_test_message.png[align="center"]
+endif::[]
+
+
+Once the test is done, you can remove the MQ client deployment with:
+
+[source,bash]
+----
+./deploy.sh delete
+----
+
+which should output:
+
+[source,bash]
+----
+configmap "ibm-ccdt" deleted
+secret "ibm-kdb-sth" deleted
+pod "mq-client" deleted
+----
+
+=== Deploying ACE integration server
+
+Change to `ace` directory
+
+[source,bash,]
+----
+ace-mq-tls
+...
+├── openshift
+│   ├── ace  <-- change to this direcotory
+│   ├── ldap  
+│   │   └── test
+│   ├── mq
+│   │   └── test
+│   └── readme_images
+...
+----
+
+There are two scripts to run for ACE deployment. 
+
+The link:ace/generate_image.sh[generate_image.sh] script create a custom image based on a `cp.icr.io/cp/appc/ace-server-prod` footnote:[We are using version `12.0.3.0-r1` of the ACE image. See link:https://www.ibm.com/docs/en/app-connect/containers_cd?topic=obtaining-app-connect-enterprise-server-image-from-cloud-container-registry[Obtaining the IBM App Connect Enterprise server image from the IBM Cloud Container Registry] for more image versions] image that bakes in the BAR file. The script requires your container client to login to `cp.icr.io` container registry to pull down the image with your container tool (for example, `docker`) footnote:[See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-applying-your-entitlement-key-online-installation[Obtaining your entitlement key]]. Script assumes that the internal OpenShift registry has been exposed. The custom image is then pushed to the OpenShift registry by the script on the `ace` namespace.
+
+To push the custom image:
+
+. Create `ace` namespace
++
+[source,bash]
+----
+oc new-project ace
+----
+. Run the link:ace/generate_image.sh[generate_image.sh] script:
++
+[source,bash]
+----
+./generate_image.sh
+----
+
+Verify that the image has been pushed with:
+
+[source,bash]
+----
+oc get is -n ace
+----
+
+which should output something like:
+
+[source,bash]
+----
+NAME          IMAGE REPOSITORY                                                   TAGS     UPDATED
+readwritemq   image-registry.openshift-image-registry.svc:5000/ace/readwritemq   latest   54 minutes ago
+----
+
+The link:ace/deploy.sh[deploy.sh] is responsible to deploying an ACE server instance on the OpenShift cluster. Examine the script.
+
+It makes use of a OpenShift template, link:ace/integration_server.yaml[integration_server.yaml]. The template defines 
+
+. A Configuration object that loads the KDB file. The KDB file contains the key and certficate for ACE server\'s own identity. The certificate is signed by a CA that MQ trust. The KDB also contains the CA certficate, which is trusted by the MQ server. This way Mutual Authentication between the servers are accomplished.
+
+. A Configuration object that loads the STH file for the corresponding KDB file.
+
+. A Configuration object that loads the MQ Endpoint policy project, link:../ace/initial-config/policy/mq.policyxml[mq.policyxml].
+
+. A Configuration object that loads the `serverconf.yaml` for our ACE server, link:../ace/initial-config/serverconf/server.conf.yaml[server.conf.yaml]
+
+. A Configuration object that loads the setdbparms for our ACE server, link:../ace/initial-config/setdbparms/setdbparms.txt[setdbparms.txt]
+
+. An IntegrationServer object that defines our ACE integration server. The custom resource refers our custom image. It also refers to the configurations defined in earlier steps.
+
+The script assumes that the instance will be installed on a namespace named, `ace`.
+
+To install the ACE server:
+
+. Install IBM IBM App Connect pperator on the namespace if not already installed, on the `ace` namespace
++
+Refer to link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-operators-using-openshift-console[Installing the operators using the Openshift console]
++
+Wait until the operator is installed before moving on to the next step
+
+. Install the IBM Entitled Registry entitlement key as a pull secrent on `ace` namespace
++
+See link:https://www.ibm.com/docs/en/cloud-paks/cp-integration/2021.4?topic=installing-applying-your-entitlement-key-online-installation[IBM Entitled Registry entitlement keys] for details.
+
+. Run the link:ace/deploy.sh[deploy.sh] script
++
+Simply running
++
+[source,bash,attributes]
+----
+./deploy.sh
+----
++
+will spit out the kubernetes objects that are to tbe created. Examine the output to see what objects are to be created.
++
+Apply the objects with
++
+[source,bash]
+----
+./deploy.sh apply
+----
++
+which will apply the objects on the namespace, `ace`.
+
+Wait until operator has finished deploying the integration server. 
+
+You can verify the installation by checking the logs of the ace pod, with:
+
+[source,bash]
+----
+oc logs $(oc -n ace get pods -l app.kubernetes.io/instance=ace -o jsonpath='{$.items[*].metadata.name}')
+----
+
+Check for errors. Verify the installation looking for logs similar to:
+
+[source,bash]
+----
+...: BIP9906I: Reading deployed resources.
+...: BIP9907I: Initializing deployed resources.
+...: BIP2155I: About to 'Initialize' the deployed resource 'ace-mq' of type 'Application'.
+...: BIP2155I: About to 'Start' the deployed resource 'ace-mq' of type 'Application'.
+...: BIP2269I: Deployed resource 'readwritemq' (uuid='readwritemq',type='MessageFlow') started successfully.
+...: BIP2866I: IBM App Connect Enterprise administration security is inactive.
+...: BIP3132I: The HTTP Listener has started listening on port '7600' for 'RestAdmin http' connections.
+...: BIP1991I: Integration server has finished initialization.
+... Integration server is ready
+----
+
+==== Test it out
+
+If you check back at the queues on the MQ server, there should not be any message on the `DEV.APP.Q.IN` queue. Instead, the message flow should put that message on the `DEV.APP.Q.OUT` queue.
+
+We can further test our solution by putting another message on `DEV.APP.Q.IN` queue. This time we can use the MQ web console.
+
+Open up the `DEV.APP.Q.IN` queue view and create a message:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_wc_ace_message.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_wc_ace_message.png[align="center"]
+endif::[]
+
+The message would be picked up by the ACE message flow immediately, and put on the `DEV.APP.Q.OUT` queue:
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_wc_ace_message_count.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_wc_ace_message_count.png[align="center"]
+endif::[]
+
+ifdef::env-github[]
+++++
+<p align="center">
+  <img src="readme_images/mq_wc_ace_message_new.png">
+</p>
+++++
+endif::[]
+ifndef::env-github[]
+image::readme_images/mq_wc_ace_message_new.png[align="center"]
+endif::[]
+
+This conclude the OpenShift deployment of our ACE to MQ solution.

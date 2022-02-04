@@ -29,6 +29,7 @@ objects:
           image: ibmcom/mq:9.2.0.0-r1
           command: ["tail"]
           args: ["-f", "/dev/null"]
+          workingDir: /opt/mqm/samp/bin
           env:
             - name: MQCCDTURL
               value: /ccdt/ccdt.json

@@ -37,7 +37,7 @@ In this tutorial we will create all the required certficates and private keys, a
 
 == The example application
 
-We will have a message flow built with App Connect Enterprise (ACE) toolkit. The message flow integrates with a single queue manager. The flow reads from a queue and write to another queue hosted on the queue manager.
+We will have a message flow built with App Connect Enterprise (ACE) toolkit. The message flow integrates with a single queue manager. The flow reads from a queue and write to another queue hosted on the same queue manager.
 
 ifdef::env-github[]
 ++++
@@ -78,7 +78,7 @@ Source code of this ACE application can be found here: link:https://github.com/i
 
 The ACE integration server hosting this ACE application (message flow) will connect to MQ server over TLS and Mutual Authetication. link:ace/initial-config/serverconf/server.conf.yaml[server.conf.yaml] will set up the MQ key repository that the ACE server will use for mutual authentication over TLS.
 
-Connection details to MQ are de-coupled from the application and are configured with deployment with MQ policy project, named, link:ace/initial-config/policy/mq.policyxml[`QM`]. 
+Connection details to MQ are de-coupled from the application and are configured at deployment with MQ policy project, named, link:ace/initial-config/policy/mq.policyxml[`QM`]. 
 
 ifdef::env-github[]
 ++++
@@ -106,14 +106,33 @@ Password for authenticating with the queue are set up via the security identity 
 
 For MQ, user authentication to the queues will be set up with an LDAP instance. link:ldap/bootstrap.ldif[bootstrap.ldif] defines the LDAP users, groups and passwords.
 
-The queue manager will be configured an MQSC file, link:mq/config.mqsc[config.mqsc]. It contains configurations to connect to the LDAP instance. The MQSC file creates and sets up a channel `DEV.APP.SVRCONN` that requires SSL mutual authentication. 
+The queue manager will be configured with an MQSC file, link:mq/config.mqsc[config.mqsc]. It contains configurations to connect to the LDAP instance. The MQSC file creates and sets up a channel `DEV.APP.SVRCONN` that requires SSL mutual authentication. 
 
-It defines the two queues, `DEV.APP.Q.IN` and `DEV.APP.Q.OUT`, and it sets up authentication records so that only `aceapp` LDAP user can access the queues. This is the LDAP user used by the ACE message flow as its security identity.
+It defines the two queues, `DEV.APP.Q.IN` and `DEV.APP.Q.OUT`, and it sets up authentication records so that only `aceapp` LDAP user can access the queues. This is the LDAP user used by the ACE message flow in its security identity.
 
 
 == Steps
 
 We start by creating the required keys and certificates. Afterwards, if you either deploy the solution locally with containers or on OpenShift.
+
+. Clone this repository.
++
+[source,bash,]
+----
+ace-mq-tls
+├── README.asciidoc    <-- this file
+├── ace                <-- common configurations for ace deployment
+├── cert-generation    <-- scripts for generating keys, certificates, keystores
+├── common             <-- common scripts included in various installation scripts
+├── env.sh             <-- environment variables used in various installation scripts
+├── ldap               <-- common configurations for LDAP deployment
+├── local              <-- scripts for local deployment of the solution
+├── mq                 <-- common configurations for MQ deployment
+├── openshift          <-- scripts for OpenShift deployment of the solution
+├── paths.sh           <-- environment variables pointing to various 
+└── readme_images      <-- images used in this README file
+----
+
 
 . To create the keys, certficates and stores follow link:cert-generation/README.md[cert-generation]
 
@@ -121,4 +140,4 @@ We start by creating the required keys and certificates. Afterwards, if you eith
 +
 Follow link:local/README.asciidoc[local deployment] for local container based deployment
 +
-Follow link:openshift/README.md[OpenShift deployment] for OpenShift based deployment
+Follow link:openshift/README.asciidoc[OpenShift deployment] for OpenShift based deployment

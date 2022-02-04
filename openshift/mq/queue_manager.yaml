@@ -32,8 +32,7 @@ objects:
     spec:
       license:
         accept: true
-        license: L-RJON-BN7PN3
-        metric: ProcessorValueUnit
+        license: L-RJON-BUVMQX
         use: NonProduction
       queueManager:
         name: ${QUEUE_MANAGER_NAME}
@@ -41,11 +40,11 @@ objects:
           - configMap:
               name: ${PREFIX}-config-mqsc
               items:
-              - config.mqsc
+                - config.mqsc
         storage:
           queueManager:
             type: ephemeral
-      version: ${MQ_VERSION}
+      version: 9.2.0.1-r1-eus
       web:
         enabled: true
       pki:
